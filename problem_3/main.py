@@ -18,7 +18,7 @@ x0    = np.array([-15.0,15.0])   # initial condition
 # Initialize ftocp parameters
 printLevel = 3
 # Added since had bug lower down when referenced n without initializing
-N  = 10; n = 2; d = 1
+N  = 4; n = 2; d = 1
 Q      = np.eye(n)
 R      = 10*np.eye(d)
 Qf     = np.eye(n)
