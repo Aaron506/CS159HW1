@@ -58,7 +58,7 @@ class FTOCP(object):
 
 		# Solve QP
 		startTimer = datetime.datetime.now()
-		self.osqp_solve_qp(self.H, self.q, self.G_in, np.add(self.w_in, np.dot(self.E_in,x0)), self.G_eq, ... )
+		self.osqp_solve_qp(self.H, self.q, self.G_in, np.add(self.w_in, np.dot(self.E_in,x0)), self.G_eq, np.dot(self.E_eq,x0) + self.C_eq)
 		endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
 		self.solverTime = deltaTimer
 		
@@ -85,8 +85,22 @@ class FTOCP(object):
 
 	def buildIneqConstr(self):
 		# Hint: Are the matrices G_in, E_in and w_in constructed using  A and B? 
-		...
-
+		# Answer: No, so just copy from problem 2
+        
+		nbx = len(self.bx)
+		nbu = len(self.bu)
+		nbf = len(self.bf)
+      
+		diagonal = [self.Fx]*(self.N-1) + [self.Ff] + [self.Fu] * (self.N)
+      
+		allButTop = linalg.block_diag(*(diagonal))
+		G_in = np.vstack([np.zeros((nbx, self.n * self.N + self.d * self.N)), allButTop])
+      
+		E_in = np.zeros((nbx * self.N + nbf + nbu * self.N, self.n))
+		E_in[:nbx, :] = -self.Fx
+      			                
+		w_in = np.concatenate([self.bx]*self.N + [self.bf] + [self.bu] * self.N)
+      
 		if self.printLevel >= 2:
 			print("G_in: ")
 			print(G_in)
@@ -101,7 +115,9 @@ class FTOCP(object):
 
 	def buildCost(self):
 		# Hint: Are the matrices H and q constructed using  A and B? 
-		...
+		# Answer: No, so just copy problem2 code
+		barQ = linalg.block_diag(*([self.Q]*(self.N-1) + [self.Qf]))
+		barR = linalg.block_diag(*([self.R]*self.N))
 
 		H = linalg.block_diag(barQ, barR)
 		q = np.zeros(H.shape[0]) 
@@ -115,8 +131,20 @@ class FTOCP(object):
 		self.H = sparse.csc_matrix(2 * H)  #  Need to multiply by two because CVX considers 1/2 in front of quadratic cost
 
 	def buildEqConstr(self):
-		...
+		# self.A, self.B, self.C are now lists of length N
+        
+		# Put a dummy block which will be removed
+		Apart = -1 * linalg.block_diag(*(self.A + [np.eye(self.n)]))[:(-self.n), self.n:]
+		Ipart = linalg.block_diag(*([np.eye(self.n)] * self.N))
+		xPart = Ipart + Apart
+		uPart = -1 * linalg.block_diag(*(self.B))
+		G_eq = np.hstack([xPart, uPart])
+      
+		E_eq = np.zeros((self.N * self.n, self.n))
+		E_eq[:self.n, :] = self.A[0]
 
+		C_eq = np.concatenate(self.C)
+        
 		if self.printLevel >= 2:
 			print("G_eq: ")
 			print(G_eq)

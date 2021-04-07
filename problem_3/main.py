@@ -17,10 +17,11 @@ x0    = np.array([-15.0,15.0])   # initial condition
 
 # Initialize ftocp parameters
 printLevel = 3
-N  = 4
-Q      = np.eye(2)
-R      = 10*np.eye(1)
-Qf     = np.eye(2)
+# Added since had bug lower down when referenced n without initializing
+N  = 10; n = 2; d = 1
+Q      = np.eye(n)
+R      = 10*np.eye(d)
+Qf     = np.eye(n)
 
 # State constraint set X = \{ x : F_x x \leq b_x \}
 Fx = np.vstack((np.eye(n), -np.eye(n)))
