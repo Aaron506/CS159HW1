@@ -29,13 +29,13 @@ class MDP(object):
 		for a in range(0, self.actions):
 			C_a_s = self.C[a][s]
 			P_a_s = self.P[a][s,:]
-			val = ...
+			val = C_a_s +  np.sum((P_a_s * V).T, axis = 0)
 			cost.append(val)
 
 		# s-th component of the value function vector
-		Vn_s = ...
+		Vn_s = min(cost)
 		# s-th component of the action vector
-		An_s = ...
+		An_s = cost.index(min(cost))
 
 		return Vn_s, An_s
 
@@ -48,9 +48,9 @@ class MDP(object):
 		# Policy Iteration Loop
 		for j in range(0, self.maxIt):
 			# Hint: use the functions that you have already developed
-			[Ppi, Cpi] = ... # First compute a policy for the threshild value iThreshold
-			Vnext      = ... # Policy evaluation step
-			iThreshold = ... # Policy improvement step;
+			[Ppi, Cpi] = self.computePolicy(iThreshold)# First compute a policy for the threshild value iThreshold
+			Vnext      = self.policyEvaluation(Ppi, Cpi)# Policy evaluation step
+			iThreshold = self.policyImprovement(Vnext) # Policy improvement step;
 			Vn.append(Vnext)
 
 			# Check if the algorithm has converged
@@ -68,7 +68,8 @@ class MDP(object):
 		# Run Bellman recursion for all states
 		# Notice that self.states = 2N+2 = total number of states
 		# Hint: Here you need to run a for loop to update the vectors Vn \in \mathbb{R}^{self.states} and An \in \mathbb{R}^{self.states}
-		...	
+		for s in range(0, self.states):
+			Vn[s], An[s] = self.bellmanRecursion(s, V)
 		
 
 		iThreshold = self.computeIndex(An)
@@ -94,7 +95,8 @@ class MDP(object):
 			# Notice that self.states = 2N+2 = total number of states
 			# Hint: You need to update the vectors Vnext \in \mathbb{R}^{self.states} and Anext \in \mathbb{R}^{self.states}
 			for s in range(0, self.states):
-				...
+				Vnext[s], Anext[s] = self.bellmanRecursion(s, Vcurrent)
+				#print(Vnext[s], Anext[s])
 
 			Vn.append(Vnext)
 			An.append(Anext)
@@ -112,8 +114,11 @@ class MDP(object):
 
 		# Run iterative strategy
 		for j in range(0,self.maxIt):
-			Vnext = ... # Hint: here you need to use only Vn[-1], P and C.
+			Vnext = C + np.sum((P * Vn[-1]).T, axis = 0)  # Hint: here you need to use only Vn[-1], P and C.
+			#print(P * Vn[-1])
+			#print(np.sum((P.T * Vn[-1])))
 			Vn.append( Vnext )
+			#print(Vn[-1])
 
 			# Check if algorithm has converged
 			if ((j>1) and np.sum(Vn[-1]-Vn[-2])==0):
@@ -134,12 +139,12 @@ class MDP(object):
 		# You need to combine the matrices self.P[0] and self.P[1] which are assocaied 
 		# with the move forward acton and parking action, respectively 
 		# (hint: use the variable sThreshold and the command vstack)
-		Ppi = ...
+		Ppi = np.vstack((self.P[0][0:sThreshold, :],self.P[1][sThreshold:, :]))
 
 		# You need to combine the vectors self.C[0] and self.C[1] which are assocaied 
 		# with the move forward acton and parking action, respectively (hint: use the variable sThreshold)
 		# (hint: use the variable sThreshold and the command hstack)
-		Cpi = ...
+		Cpi = np.hstack((self.C[0][0:sThreshold],self.C[1][sThreshold:]))
 
 		if self.printLevel >= 3:
 			print("Ppi: ")
@@ -170,13 +175,13 @@ class MDP(object):
 			s_n = 2*(i+1) # (i+1)-th parking spot free for (i+1) < N and garage for (i+1) = N 
 
 			if i == self.N-1:
-				P_move_forward[i_f, s_n] = ... 
-				P_move_forward[i_o, s_n] = ...
+				P_move_forward[i_f, s_n] = 1 
+				P_move_forward[i_o, s_n] = 1
 			else:
-				P_move_forward[i_o, s_n+0] = ... 
-				P_move_forward[i_o, s_n+1] = ...
-				P_move_forward[i_f, s_n+0] = ... 
-				P_move_forward[i_f, s_n+1] = ...
+				P_move_forward[i_o, s_n+0] = self.p
+				P_move_forward[i_o, s_n+1] = 1 - self.p
+				P_move_forward[i_f, s_n+0] = self.p 
+				P_move_forward[i_f, s_n+1] = 1 - self.p
 
 		# Parking
 		for i  in range(0, self.N):
@@ -185,24 +190,24 @@ class MDP(object):
 			s_n = 2*(i+1) # (i+1)-th parking spot free
 
 			if i == self.N-1:
-				P_park[i_f, -1] = ...
-				P_park[i_o, s_n] = ... 
+				P_park[i_f, -1] = 1 #transition to the theater
+				P_park[i_o, s_n] = 1 
 			else:
-				P_park[i_f, -1] = ...
-				P_park[i_o, s_n+0] = ... 
-				P_park[i_o, s_n+1] = ...
+				P_park[i_f, -1] = 1
+				P_park[i_o, s_n+0] = self.p
+				P_park[i_o, s_n+1] = 1 - self.p
 			
 		# Compute cost vector associated with each action
 		C_move_forward = np.zeros(2*self.N+2);
 		C_park         = np.zeros(2*self.N+2);
-	
+
 		# Cost of being at the Garage		
 		C_move_forward[-2] = self.Cg
 		C_park[-2]         = self.Cg
 
 		for i in range(0, self.N):
 			i_f = 2*i # i-th parking spot free
-			C_park[i_f] = ...
+			C_park[i_f] = self.N - i
 		
 		if self.printLevel >= 2:
 			print("P_move_forward:")
